@@ -1,0 +1,39 @@
+To other container with in a pod -No routing required - pause container takes
+
+To other container with in other pod in same node - Docker bridge will be involved for routing traffic between different pods in the same node
+
+To other container with in other pod in different node - Routing Tables/Ip Tables will be involved
+
+kubectl get pods -o wide
+kubectl get nodes -o wide
+
+
+ClusterIP - internal
+NodePort  - public exposure - testing purpose
+LoadBalancer - public exposure - prod
+Headless - it wont have any ip at all
+
+Ingress reverse proxy
+
+
+apiVersion: v1
+kind: Service
+metadata:
+   name: nginx-service
+   labels:
+      app: nginx
+specs:
+   type: clusterIP
+   ports:
+   - ports: 80
+     targetPort: 80
+     protocol: TCP
+selectors:
+     app:nginx
+
+kubectl get services
+kubectl apply -f filename
+kubectl get services
+kubectl describe services
+
+
