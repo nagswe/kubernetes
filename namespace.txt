@@ -1,0 +1,33 @@
+docker pull nginx port 8080 web01
+docker pull centos srv01
+docker pull ubuntu ubutu01
+docker exec -it srv01 ping google.com
+docker exec -it srv01 ls -ltr
+docker exec -it srv01 /bin/bash
+ping google.com
+ping web01
+ping ubuntu01
+ping with ip
+docker inspect web01 | grep -i "ipaddress"
+docker inspect srv01 | grep -i "subnet"
+docker inspect ubuntu01 | grep -i "bridge"
+docker network create my-bridge01 --driver bridge
+docker network ls
+docker network inspect bridge | grep -i "subnet"
+docker network inspect my-bridge01 | grep -i "subnet"
+docker network create my-bridge02 --driver bridge
+docker network inspect my-bridge02 | grep -i "subnet"
+docker run -itd --name web100 --network=my-bridge01 nginx
+docker run -itd --name web200 --network=my-bridge01 nginx
+docker run -itd --name srv100 --network=my-bridge01 centos
+docker exec -it srv0100 /bin/bash
+ping web100
+docker network inspect host
+docker run -itd --name httpd02 --network=host httpd
+docker network inspect host
+docker stop $(docker ps -a -q)
+ip netns list
+ip netns add namespace1
+ip netns add namespace2
+ip link add veth1 type veth peer name veth2
+ip link set veth1 netns namespace1
