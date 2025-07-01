@@ -1,0 +1,1430 @@
+KUBERNETES DAY2
+
+Kublet get nodes
+main components in k8s
+Pod -Collection of containers v1
+Deployments --- multiple copies of same pod scenario apps/v1
+Replicasets --- 
+Configmaps
+Services
+Secrets
+Perstistentvolumes
+PerstistentVolumeclaims
+Statefulsets
+Monitoring app
+isthio app
+
+Kubernets
+-------
+Shim (Merantis, Containerd, CRI-O)
+-------
+Docker Engine
+--------
+Linux OS
+
+Mkdir Class_mainfest_examples
+cd Class_mainfest_examples
+vi single-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+sample_mainfest.yaml
+default attributes
+apiversion:
+kind:
+metadata:
+specs:
+kubectl get pods
+kubectl apply -f single-pod.yaml
+kubectl get pod
+kubectl describe pod/nginx 
+vi multi-containerpod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: shared-storage 
+spec:
+  volumes:
+    - name: shared-data
+      emptyDir: {}
+  containers:
+    - name: nginx-container
+      image: nginx
+      volumeMounts:
+        - name: shared-data
+          mountPath: /usr/share/nginx/html
+    - name: debian-container
+      image: debian
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data
+      command: ["/bin/sh"]
+      args: ["-c", "echo Level Up Blue Team! > /data/index.html"]
+kubectl apply -f filename 
+kubectl apply .
+vi deployment.yaml
+apiVersion: apps/v1
+kind: replicasets
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+kubectl apply -f deployment.yaml
+kubectl get deployments
+kubectl get pods -o wide
+kubectl get replicaset
+kubectl api-resources
+
+
+DAY3
+docker networking
+TO other container with ina pod --- No routing required - pause container takes care of the communication
+
+To other container with in other pod in same node - Docker bridge will be involved for routing traffic between different pods in the same node
+
+To other container with in other pod in different node  - Routing table/ip tables will be involved
+
+kubectl get pods -o wide
+kubectl get pod -o wide
+kubectl delete pod podname
+
+clusterip internal 
+Nodeport - public exprosure -testing purpose
+Loadbalancer - public exprosure -prod
+headless -t wont any ip at all
+kubectl describe service pod name
+
+ingress -reverse proxy
+
+vi loadbalancer.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-lb-depl
+  labels:
+    app: lb_nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: lb_nginx
+  template:
+    metadata:
+      labels:
+        app: lb_nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-lb-service
+  labels:
+    app: lb_nginx
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: nginx
+vi clusterip.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  labels:
+    app: nginx
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: nginx
+
+vi nodeport.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-np-depl
+  labels:
+    app: np_nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: np_nginx
+  template:
+    metadata:
+      labels:
+        app: np_nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-np-service
+  labels:
+    app: np_nginx
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: nginx
+
+30000-32767 range
+vi headless.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-hs-depl
+  labels:
+    app: hs-nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hs-nginx
+  template:
+    metadata:
+      labels:
+        app: hs-nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-headless-service
+  labels:
+    app: hs-nginx
+spec:
+  clusterIP: None
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: hs_nginx
+
+deafaul dcker bridge:
+ping <ip address>
+
+custom bridge:
+ping <container_name>
+
+pod-name.service-name.namespace.svc.cluster.local --- 10.39.0.0
+kubectl get namespace
+kubeDNS
+
+Flipkart
+
+microservices Architect
+
+Search               - Deployment - service - ClusterIP
+Images Catalouge     - Deployment - service - ClusterIP
+Payment              - Deployment - service - ClusterIP
+Shipping             - Deployment - service - ClusterIP
+Cart                 - Deployment - service - ClusterIP
+Homepage             - - Deployment - service - Loadbalancer/ClusterIP
+Login/Logout         -- Deployment - service - ClusterIP
+
+
+day4
+
+INGRESS
+
+Intelligent                                     Basic                                  
+Application Load Balancer (ALB)            Network Load Balancer (NLB)
+Application Gateway                        Azure Load Balancer                                   
+1:Many                                     1:1
+ALB1----> WWW.google.com                   NLB1---->
+ALB1----> Www.facebook.com                 NLB2---->
+                                           NLB3---->
+INGRESS                                    LOAD BALANCER, CLUSTERIP, Nodeport
+2 Components
+Ingress Controller
+Ingress Resource  -Request Routing Rules - How the request has to received, how it has to forward, to whom it needs to be forwarded
+
+Controller Manager
+
+kubectl apply -f kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-
+v1.2.1/deploy/static/provider/cloud/deploy.yaml
+
+kubectl get namespaces
+
+kubectl get deploy
+
+kubectl get services
+
+kubectl get pods -n kube-system
+
+vi httpd_app.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpd  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpd
+  template:
+    metadata:
+      labels:
+        app: httpd
+    spec:
+      containers:
+      - name: httpd
+        image: httpd
+        ports:
+        - containerPort: 80
+        env:
+        - name: TITLE
+          value: "APACHE APP2"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpd  
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: httpd
+
+vi nginx_app.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        env:
+        - name: TITLE
+          value: "NGINX APP1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx  
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: nginx
+
+kubectl app -f .
+
+hostname based routing rules
+    www.httpdapp.com----> httpd service
+    www.nginxapp.com----> nginx service
+
+
+path based rules
+       www.app.com/httpd-----> httpd service
+       www.app.com/nginx-----> nginx service
+
+kubectl api-resources
+
+vi ingresshost.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+  name: nginx-httpd-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: www.nginxapp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+  - host: httpdapp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpd
+            port:
+              number: 80
+
+kubectl get ingress
+kubectl get all -n ingress-nginx
+kubectl apply -f ingresshost.yaml
+
+135.237.24.167 nginxapp.example.com    
+135.237.24.167 httpdapp.example.com  
+
+hosts file
+
+Windows c:\windows\system32\drives\etc/hosts
+Linux /etc/hosts
+
+kubectl describe ingress nginx-httpd-ingress 
+
+vi ingresspath.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+  name: nginx-httpd-path-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /nginx(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+      - path: /httpd(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: httpd
+            port:
+              number: 80
+      - path: /(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+
+kubectl describe ingress 
+
+
+day5
+ kubernets Name space
+
+kubectl get ns
+kubectl get all --namespace=kube-system
+kubectl get all -n kube-system
+kubectl get all -n kube-public
+kubectl get all -n kube-node-lease
+kubectl get all -n=default
+kubectl apply -f ns.yaml
+kubectl get ns
+kubectl create ns prod
+kubectl create deploy nginx-prod  --image=nginx -n prod 
+kubectl get deploy
+kubectl get deploy -n prod
+kubectl get deploy
+kubectl get pods
+kubectl get pods -n=prod
+kubectl create deploy nginx-dev --image=nginx
+kubectl exec -it nginx-prod-747bd6849c-r8xmb -n prod -- sh
+kubectl exec -it nginx-demo-554db85f85-bz58g -- sh
+kubectl get pods -o wide for 192.168.47.222
+kubectl get pods -n=prod -o wide 192.168.44.92
+curl copyip of default 
+curl copyip of prod ns
+kubectl scale --replicas=3 deploy/nginx-prod -n=prod
+kubectl scale --replicas=3 deploy/nginx-dev 
+kubectl expose deploy/nginx-prod --name=svc-prod --port 80 -n=prod
+kubectl get svc -n=prod
+kubectl expose deploy/nginx-dev --name=svc-dev --port 80 
+kubectl exec -it nginx-prod-554db85f85-bz58g -n prod -- sh
+curl svc-dev
+cat /etc/resolv.conf in both pods
+curl svc-dev.default.svc.cluster.local  
+dev 10.244.1.170
+prod 10.244.1.121
+curl svc-prod.prod.svc.cluster.local
+
+
+day6
+Kubernetes resource limits 1cpu = 1000 milli CPUs 1GI = 1GB 
+
+vi nginx-limits.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: default  
+spec:
+  replicas: 3 
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+  KUBERNETES DAY2
+
+Kublet get nodes
+main components in k8s
+Pod -Collection of containers v1
+Deployments --- multiple copies of same pod scenario apps/v1
+Replicasets --- 
+Configmaps
+Services
+Secrets
+Perstistentvolumes
+PerstistentVolumeclaims
+Statefulsets
+Monitoring app
+isthio app
+
+Kubernets
+-------
+Shim (Merantis, Containerd, CRI-O)
+-------
+Docker Engine
+--------
+Linux OS
+
+Mkdir Class_mainfest_examples
+cd Class_mainfest_examples
+vi single-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+sample_mainfest.yaml
+default attributes
+apiversion:
+kind:
+metadata:
+specs:
+kubectl get pods
+kubectl apply -f single-pod.yaml
+kubectl get pod
+kubectl describe pod/nginx 
+vi multi-containerpod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: shared-storage 
+spec:
+  volumes:
+    - name: shared-data
+      emptyDir: {}
+  containers:
+    - name: nginx-container
+      image: nginx
+      volumeMounts:
+        - name: shared-data
+          mountPath: /usr/share/nginx/html
+    - name: debian-container
+      image: debian
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data
+      command: ["/bin/sh"]
+      args: ["-c", "echo Level Up Blue Team! > /data/index.html"]
+kubectl apply -f filename 
+kubectl apply .
+vi deployment.yaml
+apiVersion: apps/v1
+kind: replicasets
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+kubectl apply -f deployment.yaml
+kubectl get deployments
+kubectl get pods -o wide
+kubectl get replicaset
+kubectl api-resources
+
+
+DAY3
+docker networking
+TO other container with ina pod --- No routing required - pause container takes care of the communication
+
+To other container with in other pod in same node - Docker bridge will be involved for routing traffic between different pods in the same node
+
+To other container with in other pod in different node  - Routing table/ip tables will be involved
+
+kubectl get pods -o wide
+kubectl get pod -o wide
+kubectl delete pod podname
+
+clusterip internal 
+Nodeport - public exprosure -testing purpose
+Loadbalancer - public exprosure -prod
+headless -t wont any ip at all
+kubectl describe service pod name
+
+ingress -reverse proxy
+
+vi loadbalancer.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-lb-depl
+  labels:
+    app: lb_nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: lb_nginx
+  template:
+    metadata:
+      labels:
+        app: lb_nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-lb-service
+  labels:
+    app: lb_nginx
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: nginx
+vi clusterip.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  labels:
+    app: nginx
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: nginx
+
+vi nodeport.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-np-depl
+  labels:
+    app: np_nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: np_nginx
+  template:
+    metadata:
+      labels:
+        app: np_nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-np-service
+  labels:
+    app: np_nginx
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: nginx
+
+30000-32767 range
+vi headless.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-hs-depl
+  labels:
+    app: hs-nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hs-nginx
+  template:
+    metadata:
+      labels:
+        app: hs-nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-headless-service
+  labels:
+    app: hs-nginx
+spec:
+  clusterIP: None
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: hs_nginx
+
+deafaul dcker bridge:
+ping <ip address>
+
+custom bridge:
+ping <container_name>
+
+pod-name.service-name.namespace.svc.cluster.local --- 10.39.0.0
+kubectl get namespace
+kubeDNS
+
+Flipkart
+
+microservices Architect
+
+Search               - Deployment - service - ClusterIP
+Images Catalouge     - Deployment - service - ClusterIP
+Payment              - Deployment - service - ClusterIP
+Shipping             - Deployment - service - ClusterIP
+Cart                 - Deployment - service - ClusterIP
+Homepage             - - Deployment - service - Loadbalancer/ClusterIP
+Login/Logout         -- Deployment - service - ClusterIP
+
+
+day4
+
+INGRESS
+
+Intelligent                                     Basic                                  
+Application Load Balancer (ALB)            Network Load Balancer (NLB)
+Application Gateway                        Azure Load Balancer                                   
+1:Many                                     1:1
+ALB1----> WWW.google.com                   NLB1---->
+ALB1----> Www.facebook.com                 NLB2---->
+                                           NLB3---->
+INGRESS                                    LOAD BALANCER, CLUSTERIP, Nodeport
+2 Components
+Ingress Controller
+Ingress Resource  -Request Routing Rules - How the request has to received, how it has to forward, to whom it needs to be forwarded
+
+Controller Manager
+
+kubectl apply -f kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-
+v1.2.1/deploy/static/provider/cloud/deploy.yaml
+
+kubectl get namespaces
+
+kubectl get deploy
+
+kubectl get services
+
+kubectl get pods -n kube-system
+
+vi httpd_app.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpd  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpd
+  template:
+    metadata:
+      labels:
+        app: httpd
+    spec:
+      containers:
+      - name: httpd
+        image: httpd
+        ports:
+        - containerPort: 80
+        env:
+        - name: TITLE
+          value: "APACHE APP2"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpd  
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: httpd
+
+vi nginx_app.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        env:
+        - name: TITLE
+          value: "NGINX APP1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx  
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: nginx
+
+kubectl app -f .
+
+hostname based routing rules
+    www.httpdapp.com----> httpd service
+    www.nginxapp.com----> nginx service
+
+
+path based rules
+       www.app.com/httpd-----> httpd service
+       www.app.com/nginx-----> nginx service
+
+kubectl api-resources
+
+vi ingresshost.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+  name: nginx-httpd-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: www.nginxapp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+  - host: httpdapp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpd
+            port:
+              number: 80
+
+kubectl get ingress
+kubectl get all -n ingress-nginx
+kubectl apply -f ingresshost.yaml
+
+135.237.24.167 nginxapp.example.com    
+135.237.24.167 httpdapp.example.com  
+
+hosts file
+
+Windows c:\windows\system32\drives\etc/hosts
+Linux /etc/hosts
+
+kubectl describe ingress nginx-httpd-ingress 
+
+vi ingresspath.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+  name: nginx-httpd-path-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /nginx(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+      - path: /httpd(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: httpd
+            port:
+              number: 80
+      - path: /(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+
+kubectl describe ingress 
+
+
+day5
+ kubernets Name space
+
+kubectl get ns
+kubectl get all --namespace=kube-system
+kubectl get all -n kube-system
+kubectl get all -n kube-public
+kubectl get all -n kube-node-lease
+kubectl get all -n=default
+kubectl apply -f ns.yaml
+kubectl get ns
+kubectl create ns prod
+kubectl create deploy nginx-prod  --image=nginx -n prod 
+kubectl get deploy
+kubectl get deploy -n prod
+kubectl get deploy
+kubectl get pods
+kubectl get pods -n=prod
+kubectl create deploy nginx-dev --image=nginx
+kubectl exec -it nginx-prod-747bd6849c-r8xmb -n prod -- sh
+kubectl exec -it nginx-demo-554db85f85-bz58g -- sh
+kubectl get pods -o wide for 192.168.47.222
+kubectl get pods -n=prod -o wide 192.168.44.92
+curl copyip of default 
+curl copyip of prod ns
+kubectl scale --replicas=3 deploy/nginx-prod -n=prod
+kubectl scale --replicas=3 deploy/nginx-dev 
+kubectl expose deploy/nginx-prod --name=svc-prod --port 80 -n=prod
+kubectl get svc -n=prod
+kubectl expose deploy/nginx-dev --name=svc-dev --port 80 
+kubectl exec -it nginx-prod-554db85f85-bz58g -n prod -- sh
+curl svc-dev
+cat /etc/resolv.conf in both pods
+curl svc-dev.default.svc.cluster.local  
+dev 10.244.1.170
+prod 10.244.1.121
+curl svc-prod.prod.svc.cluster.local
+
+
+day6
+Kubernetes resource limits 1cpu = 1000 milli CPUs 1GI = 1GB 
+
+vi nginx-limits.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: default  
+spec:
+  replicas: 3 
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+    resources:
+      requests:
+        cpu: "1m"
+        memory: "100mi
+      limits:
+        cpu: "1m"
+        memory: "100mi" 
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-app-container
+          image: nginx:latest
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 80
+
+
+
+
+kubectl top nodes
+kubectl top pods
+kubectl top pods -n kube-system
+kubectl apply -f rs.yaml
+kubectl get deploy
+kubectl describe deploy nginx
+kubectl top pods
+
+default namespace -------> Resource Quotas ---> 15% of overall resources
+
+nginx deployment - 25% ---> limit Range
+mongo deployment - 25% ---> limit Range
+redis deployment - 25% ---> limit Range
+httpd deployment - 25% ---> limit Range
+
+prod namespace -------> Resource Quotas ---> 50% of overall resources
+
+nginx deployment
+mongo deployment
+redis deployment
+httpd deployment
+
+qa namespace -------> Resource Quotas ---> 15% of overall resources
+
+nginx deployment
+mongo deployment
+redis deployment
+httpd deployment
+
+dev namespace -------> Resource Quotas ---> 10% of overall resources
+
+nginx deployment
+mongo deployment
+redis deployment
+httpd deployment
+
+vi resourcequota.yaml
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: quota1
+  namespace: default  
+spec:
+  hard:
+    requests.cpu: "1"
+    requests.memory: "1Gi"
+    limits.cpu: "1"
+    limits.memory: "1Gi"
+    pods: "7"
+
+kubectl apply -f resourcequota.yaml
+
+kubectl get resourcequota
+
+kubectl top pods
+
+vi limitrange.yaml
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: my-limit-range
+  namespace: default
+spec:
+  limits:
+  - type: Container
+    defaultRequest:
+      cpu: 100m
+      memory: 200Mi
+    default:
+      cpu: 200m
+      memory: 200Mi
+    min:
+      cpu: 50m
+      memory: 100Mi
+    max:
+      cpu: 500m
+      memory: 500Mi  
+  - type: Pod
+    min:
+      cpu: 50m
+      memory: 100Mi
+    max:
+      cpu: 500m
+      memory: 1Gi
+
+
+kubectl delete deploy my-app
+
+kubectl get resourcequota
+
+kubectl apply -f limitrange.yaml
+
+kubectl get limitrange
+
+kubectl describe limitrange my-limit-range
+
+kubectl get pods
+
+kubectl top pods
+
+kubectl get resourcequota
+
+kubectl get deploy
+
+kubectl describe deploy nginx
+
+
+
+
+
+
+
+
+   
+ 
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-app-container
+          image: nginx:latest
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 80
+
+
+
+
+kubectl top nodes
+kubectl top pods
+kubectl top pods -n kube-system
+kubectl apply -f rs.yaml
+kubectl get deploy
+kubectl describe deploy nginx
+kubectl top pods
+
+default namespace -------> Resource Quotas ---> 15% of overall resources
+
+nginx deployment - 25% ---> limit Range
+mongo deployment - 25% ---> limit Range
+redis deployment - 25% ---> limit Range
+httpd deployment - 25% ---> limit Range
+
+prod namespace -------> Resource Quotas ---> 50% of overall resources
+
+nginx deployment
+mongo deployment
+redis deployment
+httpd deployment
+
+qa namespace -------> Resource Quotas ---> 15% of overall resources
+
+nginx deployment
+mongo deployment
+redis deployment
+httpd deployment
+
+dev namespace -------> Resource Quotas ---> 10% of overall resources
+
+nginx deployment
+mongo deployment
+redis deployment
+httpd deployment
+
+vi resourcequota.yaml
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: quota1
+  namespace: default  
+spec:
+  hard:
+    requests.cpu: "1"
+    requests.memory: "1Gi"
+    limits.cpu: "1"
+    limits.memory: "1Gi"
+    pods: "10"
+
+kubectl apply -f resourcequota.yaml
+
+kubectl get resourcequota
+
+kubectl top pods
+
+vi limitrange.yaml
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: my-limit-range
+  namespace: default
+spec:
+  limits:
+  - type: Container
+    defaultRequest:
+      cpu: 100m
+      memory: 200Mi
+    default:
+      cpu: 200m
+      memory: 200Mi
+    min:
+      cpu: 50m
+      memory: 100Mi
+    max:
+      cpu: 500m
+      memory: 500Mi  
+  - type: Pod
+    min:
+      cpu: 50m
+      memory: 100Mi
+    max:
+      cpu: 500m
+      memory: 1Gi
+
+
+kubectl delete deploy my-app
+
+kubectl get resourcequota
+
+kubectl apply -f limitrange.yaml
+
+kubectl get limitrange
+
+kubectl describe limitrange my-limit-range
+
+kubectl get pods
+
+kubectl top pods
+
+kubectl get resourcequota
+
+kubectl get deploy
+
+kubectl describe deploy nginx
+
+
+
+
+
+
+
+
+   
